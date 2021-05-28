@@ -15,7 +15,7 @@ from ase.io.formats import all_formats as ase_all_formats
 from ase.data import vdw_radii,atomic_numbers,covalent_radii,chemical_symbols
 
 from mcse import Structure
-from mcse.io.check import mcse_ext
+from mcse.io.check import mcse_ext,extension2format,format2extension
 
 # Acceptable file formats listed here
 ase_file_formats = [x for x in ase_all_formats.keys()]
@@ -156,7 +156,7 @@ def wrapper_write_struct(path, struct, file_format='json', overwrite=False):
     elif file_format == 'geometry' or \
          file_format == 'geo' or \
          file_format == 'aims':
-        output_geo(path, struct, overwrite=overwrite)
+        output_ase(path, struct, file_format="aims", overwrite=overwrite)
     elif file_format == "torch":
         output_torch(path, struct, overwrite=overwrite)
     else:
@@ -184,18 +184,6 @@ def output_struct(file_path, struct, overwrite=False):
     check_overwrite(file_path, overwrite=overwrite)
     with open(file_path,'w') as f:
         f.write(struct.dumps())
-
-
-def output_geo(file_path, struct, overwrite=False):
-    """
-    Output Structure as FHI-aims geometry file using built in functionality.
-    """
-    # Fix file path with in extension
-    file_path = file_ext(file_path, "in")
-    # Checking overwrite
-    check_overwrite(file_path, overwrite=overwrite)
-    with open(file_path,'w') as f:
-        f.write(struct.get_aims())
     
 
 def output_ase(file_path, struct, file_format, overwrite=False):
@@ -249,6 +237,11 @@ def file_ext(file_path, file_ext):
         ## Otherwise, don't know how to handle file ext
         ## so do nothing
         pass
+    
+    ### Check that the given file_ext is formatted properly
+    if file_ext not in extension2format:
+        if file_ext in format2extension:
+            file_ext = format2extension[file_ext]
         
     # Add specified file extension
     file_name = file_name + "."+ file_ext
