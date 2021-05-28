@@ -15,11 +15,7 @@ from ase.io.formats import all_formats as ase_all_formats
 from ase.data import vdw_radii,atomic_numbers,covalent_radii,chemical_symbols
 
 from mcse import Structure
-<<<<<<< HEAD
-from mcse.io.check import mcse_ext,extension2format,format2extension
-=======
 from mcse.io.check import mcse_ext
->>>>>>> 2c13de4f90a9911aa429cd876b9ceb28a5d3d6c4
 
 # Acceptable file formats listed here
 ase_file_formats = [x for x in ase_all_formats.keys()]
@@ -160,11 +156,7 @@ def wrapper_write_struct(path, struct, file_format='json', overwrite=False):
     elif file_format == 'geometry' or \
          file_format == 'geo' or \
          file_format == 'aims':
-<<<<<<< HEAD
-        output_ase(path, struct, file_format="aims", overwrite=overwrite)
-=======
         output_geo(path, struct, overwrite=overwrite)
->>>>>>> 2c13de4f90a9911aa429cd876b9ceb28a5d3d6c4
     elif file_format == "torch":
         output_torch(path, struct, overwrite=overwrite)
     else:
@@ -257,14 +249,6 @@ def file_ext(file_path, file_ext):
         ## Otherwise, don't know how to handle file ext
         ## so do nothing
         pass
-<<<<<<< HEAD
-    
-    ### Check that the given file_ext is formatted properly
-    if file_ext not in extension2format:
-        if file_ext in format2extension:
-            file_ext = format2extension[file_ext]
-=======
->>>>>>> 2c13de4f90a9911aa429cd876b9ceb28a5d3d6c4
         
     # Add specified file extension
     file_name = file_name + "."+ file_ext
