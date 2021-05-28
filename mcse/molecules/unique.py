@@ -157,7 +157,14 @@ def unique_by_rmsd(struct_dict, tol=0.1):
         for j in range(i+1,num_mol):
             molecule_0 = molecule_struct_list[i]
             molecule_1 = molecule_struct_list[j]
+<<<<<<< HEAD
+            if molecule_0.formula != molecule_1.formula:
+                temp_rmsd = 100
+            else:
+                _,_,_,temp_rmsd = rmsd(molecule_0, molecule_1)
+=======
             _,_,_,temp_rmsd = rmsd(molecule_0, molecule_1)
+>>>>>>> 2c13de4f90a9911aa429cd876b9ceb28a5d3d6c4
             difference_matrix[i,j] = temp_rmsd
             difference_matrix[j,i] = temp_rmsd
     
