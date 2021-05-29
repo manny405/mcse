@@ -193,7 +193,7 @@ def read_file(file_path, file_format='', verbose=False):
     """
     if len(file_format) > 0:
         if file_format in ["geometry","geo", "aims"]:
-            struct = import_geo(file_path)
+            struct = import_ase(file_path)
         elif file_format == "json":
             struct = import_json(file_path)
         elif file_format == "cif":
@@ -208,7 +208,7 @@ def read_file(file_path, file_format='', verbose=False):
     elif '.cif' == file_path[-4:]:
         struct = import_cif(file_path)
     elif '.in' == file_path[-3:] or file_path.endswith('.next_step'):
-        struct = import_geo(file_path)
+        struct = import_ase(file_path, "aims")
     elif '.pt' == file_path[-3:]:
         struct = import_torch(file_path)
     else:
@@ -345,11 +345,14 @@ def import_cif_ase(file_path):
     return struct
 
 
-def import_ase(file_path):
+def import_ase(file_path, file_format=""):
     """
     Import general file using ase.io 
     """
-    atoms = ase.io.read(file_path)
+    if len(file_format) == 0:
+        atoms = ase.io.read(file_path)
+    else:
+        atoms = ase.io.read(file_path, format=file_format)
     struct = Structure.from_ase(atoms)
     file_name = os.path.basename(file_path)
     # Struct ID is filename before decimal 
