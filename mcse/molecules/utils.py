@@ -40,7 +40,7 @@ def com(struct):
 
     """
     geo_array = struct.get_geo_array()
-    element_list = struct.geometry['element'] 
+    element_list = struct.elements
     mass = np.array([atomic_masses_iupac2016[atomic_numbers[x]] 
                      for x in element_list]).reshape(-1)
     total = np.sum(mass)
