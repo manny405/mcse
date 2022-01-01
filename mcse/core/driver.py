@@ -8,7 +8,11 @@ from mcse.io import read,write
 
 from mcse.workflow.settings import get_settings,from_settings
 
-from mpi4py import MPI
+try: 
+    from mpi4py import MPI
+    use_mpi = True
+except:
+    use_mpi = False
 
 
 class BaseDriver_():
@@ -31,6 +35,13 @@ class BaseDriver_():
     
     
     def init_mpi(self, comm=None):
+        global use_mpi
+        if not use_mpi:
+            self.comm = None
+            self.rank = 0
+            self.size = 0
+            return
+
         self.comm = comm
         if self.comm == None:
             self.comm = MPI.COMM_WORLD

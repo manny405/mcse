@@ -60,8 +60,8 @@ write("combined_benzene", combined, file_format="xyz", overwrite=True)
 
 ### Can use build in visualizer to visualized combined geometry more clearly.
 ###   Commented out 
-# from mcse.molecules.render import OverlappingClusters
-# ar = OverlappingClusters(dpa=50, interactive=True)
-# ar.calc_struct(combined)
+from mcse.molecules.render import OverlappingClusters
+ar = OverlappingClusters(dpa=50, interactive=True)
+ar.calc_struct(combined)
 
 # %%

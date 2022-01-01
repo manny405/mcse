@@ -195,7 +195,7 @@ def output_ase(file_path, struct, file_format, overwrite=False):
     check_overwrite(file_path, overwrite=overwrite)
     # Convert to atoms object
     atoms = struct.get_ase_atoms()
-    ase.io.write(file_path, atoms, format=file_format)
+    ase.io.write(file_path, atoms, format=file_format, parallel=False)
     
 
 def output_torch(file_path, struct, overwrite=False):

@@ -16,12 +16,14 @@ setup(
                 'mcse/workflow',
                 ],
       install_requires=[
-        'numpy>=1.20.1', 
         'scipy>=1.5.0',
         'spglib>=1.9.9.44'
-        'mpi4py', 'h5py', 'matplotlib', 'sklearn', 
-        'pandas','pymatgen', 'pymongo',
-        'torch', 'numba',
+        'matplotlib', 
+        'sklearn', 
+        'pandas',
+        'pymatgen', 
+        'pymongo',
+        'torch', 
         'vtk',
 	"ase @ https://gitlab.com/ase/tarball/master", ## Always use newest version of ASE
         "pycifrw"],

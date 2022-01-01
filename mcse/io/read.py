@@ -2,6 +2,7 @@
 
 
 import os,json
+import numpy as np
 
 ## torch is optional
 try: 
@@ -202,6 +203,15 @@ def read_file(file_path, file_format='', verbose=False):
             struct = import_ase(file_path)
         elif file_format == "torch":
             struct = import_torch(file_path)
+        elif file_format == "xyz":
+            struct = import_xyz(file_path)
+        else:
+            try: struct = import_ase(file_path)
+            except:
+                if verbose:
+                    print("Could not load file {}. Check file_format argument."
+                          .format(file_path))
+                return None
             
     elif '.json' == file_path[-5:]:
             struct = import_json(file_path)
@@ -211,6 +221,8 @@ def read_file(file_path, file_format='', verbose=False):
         struct = import_ase(file_path, "aims")
     elif '.pt' == file_path[-3:]:
         struct = import_torch(file_path)
+    elif '.xyz' == file_path[-4:]:
+        struct = import_xyz(file_path)
     else:
         try: struct = import_ase(file_path)
         except: 
@@ -372,6 +384,61 @@ def import_torch(file_path):
     else:
         #### Assume it's combined file
         return struct_
+
+
+def import_xyz(file_path):
+    with open(file_path) as f:
+        lines = f.readlines()
+
+    file_name = os.path.basename(file_path)
+    init_id = file_name.split('.')[0]
+
+    geo = []
+    ele = []
+    output = {}
+    line_idx = 0
+    struct_idx = 0
+    while True:
+        num_atoms = int(lines[line_idx])
+        next_num_atoms_idx = line_idx + num_atoms + 2
+
+        prop = lines[line_idx+1]
+
+        atom_lines = lines[line_idx+2:line_idx+2+num_atoms]
+        for temp_line in atom_lines:
+            temp_split_line = temp_line.split()
+            temp_ele = temp_split_line[0]
+            if len(temp_ele) == 1:
+                temp_ele = temp_ele.upper()
+            elif len(temp_ele) == 2:
+                temp_ele = temp_ele[0].upper() + temp_ele[1].lower()
+            else:
+                pass
+
+            ele.append(temp_ele)
+            geo.append([float(temp_split_line[1]),
+                        float(temp_split_line[2]),
+                        float(temp_split_line[3])])
+
+        geo = np.vstack(geo)
+        ele = np.hstack(ele)
+
+        temp_id = "{}_{}".format(init_id, struct_idx)
+        temp_struct = Structure(struct_id=temp_id, geometry=geo, elements=ele)
+        output[temp_struct.struct_id] = temp_struct
+        struct_idx += 1
+
+        geo = []
+        ele = []
+
+        line_idx = next_num_atoms_idx
+        if line_idx >= len(lines):
+            break
+
+    if len(output) == 1:
+        return output[list(output.keys())[0]]
+    else:
+        return output
 
 
 
