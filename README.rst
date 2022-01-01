@@ -34,10 +34,11 @@ Then download the library from Github. A ``zip`` file can be downloaded using th
     
     $ git clone https://github.com/manny405/mcse.git
 
-After navigating to the ``mcse`` directory, installation is completed with the following command. 
+After navigating to the ``mcse`` directory, installation is completed with the following commands. 
 
 .. code-block:: bash
 
+    $ python -m pip install -r requirements.txt
     $ python setup.py install
 
 All requirements and dependencies will be installed automatically. Please be patient as this may take a while if multiple significant dependencies are missing. 
