@@ -22,14 +22,21 @@ class Supercell(BaseDriver_):
     mult: iterable
         Multiplicity to construct the supercell in the a,b,c 
         directions. 
+    lattice: bool
+        If the lattice should be constructed for the supercell. If the lattice  
+        is not constructed, then the supercell is build around the positive 
+        and negative directions of the given unit cell. If the lattice is 
+        constructed, then the supercell is only built in the positive directions.
     
     """
     def __init__(self, 
                  mult=(3,3,3),
+                 lattice=True,
                  track_molecules=True,
                  standardize=True,
                  bonds_kw={}):
         self.mult = mult
+        self.lattice = lattice
         self.track_molecules = track_molecules
         self.bonds_kw = bonds_kw
         self.standardize = standardize
@@ -108,19 +115,29 @@ class Supercell(BaseDriver_):
         
         if self.track_molecules:
             supercell.properties["molecule_idx"] = supercell_molecule_idx
+            
+        if self.lattice:
+            supercell_lv = np.dot(np.diag(self.mult), lv)
+            supercell.lattice = supercell_lv
         
         return supercell
         
     
     def get_range(self, idx):
-        ### Put half on the positive and negative side of unit cell
-        temp_half = int(self.mult[idx]/2)
-        if (self.mult[idx] % 2) == 0:
-            correction = 1
+        if not self.lattice:
+            ### Put half on the positive and negative side of unit cell
+            temp_half = int(self.mult[idx]/2)
+            if (self.mult[idx] % 2) == 0:
+                correction = 1
+            else:
+                correction = 0
+            first_half = np.arange(0,temp_half+1)
+            second_half = np.arange(-temp_half+correction,0)
+            final_range = np.hstack([first_half, second_half])
+            return final_range
         else:
-            correction = 0
-            
-        return np.arange(-temp_half+correction, temp_half+1)
+            ### Return only positive direction for construction
+            return np.arange(0,self.mult[idx],1)
         
 
 
