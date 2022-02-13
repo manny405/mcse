@@ -23,7 +23,7 @@ def standardize(struct,
     
     fm = FindMolecules(residues=residues,
                         mult=bonds_kw["mult"], 
-                        conformation=True, 
+                        conformation=False, 
                         mult_range=np.arange(1.05, 1.25, 0.005),
                         supercell_radius=10,
                         verbose=False)

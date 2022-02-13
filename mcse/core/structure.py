@@ -401,20 +401,23 @@ class Structure(object):
     
     
     @classmethod 
-    def from_geo(cls, array, elements, lat=[]):
+    def from_geo(cls, array, elements, lat=[], struct_id=""):
         """
         Construction method of Structure object. 
         
         """
         struct = cls()
         struct.from_geo_array(array, elements)
-        struct.get_struct_id(update=True)
+        if len(struct_id) == 0:
+            struct.get_struct_id(update=True)
+        else:
+            struct.struct_id = struct_id
         if len(lat) > 0:
             struct.set_lattice_vectors(lat)
         return struct
     
     
-    def get_sub(self, idx, lattice=True):
+    def get_sub(self, idx, lattice=True, struct_id=""):
         """
         Returns the sub-structure with respect to provided indices. 
         
@@ -426,7 +429,9 @@ class Structure(object):
             If True, will include the original lattice vectors
         """
         geo = self.get_geo_array()
-        sub = Structure.from_geo(geo[idx], self.elements[idx])
+        sub = Structure.from_geo(geo[idx], 
+                                 self.elements[idx], 
+                                 struct_id=struct_id)
         sub.properties["Parent_ID"] = self.struct_id
         if lattice:
             if len(self.lattice) > 0:
