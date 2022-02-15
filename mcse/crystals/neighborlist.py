@@ -123,7 +123,7 @@ class MCSENeighborList(BaseDriver_):
             self.overlap = True
             
     
-    def calc_struct(self, struct, atom_idx=[]):
+    def calc_struct(self, struct, atom_idx=[], offsets=False):
         if len(atom_idx) == 0:
             atom_idx = self.atom_idx
         
@@ -134,14 +134,15 @@ class MCSENeighborList(BaseDriver_):
         self.init_sc_idx = []    ### Initial approximate supercell neighborhoods
         self.sc_idx = []         ### Neighbor of each atom using supercell idx
         self.molecule_idx = []   ### Molecule idx object
+        self.offsets_cart = []   ### Storage for offsets in cartesian coordinates
         
         if len(self.struct.get_lattice_vectors()) > 0:
-            return self._periodic_calc_struct(struct, atom_idx)
+            return self._periodic_calc_struct(struct, atom_idx, offsets)
         else:
             return self._nonperiodic_calc_struct(struct, atom_idx)
     
     
-    def _periodic_calc_struct(self, struct, atom_idx=[]):
+    def _periodic_calc_struct(self, struct, atom_idx=[], offsets=False):
         if len(atom_idx) == 0:
             atom_idx = self.atom_idx
         
@@ -207,14 +208,26 @@ class MCSENeighborList(BaseDriver_):
         else:
             for iter_idx,temp_idx in enumerate(self.sc_idx):
                 self.sc_idx[iter_idx] = temp_idx[1:]
-                temp_array = np.sort(reference_idx[temp_idx[1:]])
+                # temp_array = np.sort(reference_idx[temp_idx[1:]])
+                temp_array = reference_idx[temp_idx[1:]]
                 self.idx.append(temp_array)
                 
         ### Handle storing ACSF data if that's required
         if self.acsf:
             self.store4acsf(self.struct, atom_idx)
     
-        return self.idx
+        ### Obtain offsets from storage in supercell construction
+        if offsets:
+            self.offsets_cart = []
+            sc_offsets_cart = self.sc.properties["original_supercell_trans"]
+            for iter_idx,temp_atom_idx in enumerate(atom_idx):
+                nidx_list = self.sc_idx[iter_idx]
+                temp_offsets = sc_offsets_cart[nidx_list]
+                temp_offsets -= sc_offsets_cart[temp_atom_idx]
+                self.offsets_cart.append(temp_offsets)
+            return self.idx,self.offsets_cart
+        else:
+            return self.idx
     
     
     def _nonperiodic_calc_struct(self, struct, atom_idx=[]):

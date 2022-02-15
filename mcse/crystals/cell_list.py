@@ -373,6 +373,7 @@ class CenteredSupercell(Supercell):
         supercell.properties["original_origin_frac"] = \
                         struct.properties["centered_origin_frac"]
         supercell.properties["lv_inv"] = desired_lv_inv
+        supercell.properties["offsets_cart"] = keep_trans
         
         if self.track_molecules:
             raise Exception()
@@ -480,6 +481,9 @@ class CenteredSupercell(Supercell):
         radius_removed.properties["lv_inv"] = \
                     supercell.properties["lv_inv"]
         radius_removed.properties["radius_removed"] = radius
+        
+        radius_removed.properties["offsets_cart"] = \
+            supercell.properties["offsets_cart"][keep_idx]
         
         if self.track_molecules:
             init_mol_idx = supercell.properties["molecule_idx"]

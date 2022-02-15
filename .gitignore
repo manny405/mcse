@@ -3,6 +3,8 @@ mcse/**/.DS_Store
 examples/**/.DS_Store
 *~
 **/*~
+._.DS_Store
+**/._.DS_Store
 
 
 # Byte-compiled / optimized / DLL files
