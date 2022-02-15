@@ -26,7 +26,7 @@ setup(
         'pymongo',
         'torch', 
         'vtk',
-	"ase @ https://gitlab.com/ase/ase.git", ## Always use newest version of ASE
+	"ase>=3.22.0", ## Always use newest version of ASE
         "pycifrw"],
       #data_files=[]
       )
