@@ -42,7 +42,8 @@ class Structure(object):
                  lattice=[],
                  bonds=[],
                  properties={},
-                 bonds_kw={"mult": 1.20, "skin": 0.0, "update": False}):
+                 bonds_kw={"mult": 1.20, "skin": 0.0, "update": False},
+                 trusted=False):
         
         bonds_kw = dict(bonds_kw)
         
@@ -56,7 +57,10 @@ class Structure(object):
         self.bonds_kw = bonds_kw
         self._molecules = []
         
-        self.check_valid_struct()
+        if not trusted:
+            ### Can skip some slow checks if inputs can be trusted. 
+            ###   This is mostly for use by developers, not users
+            self.check_valid_struct()
         
     
     def __str__(self):

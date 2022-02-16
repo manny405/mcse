@@ -8,6 +8,8 @@ from scipy.spatial.distance import cdist
 from mcse.core import Structure
 from mcse.core.driver import BaseDriver_
 from mcse.crystals.supercell import Supercell
+from mcse.crystals.lebedev import lebedev_64
+lebedev_64 = np.array(lebedev_64["coords"])
 
 
 def cell_list(struct, cell_size=0.01):
@@ -41,6 +43,48 @@ def cell_list(struct, cell_size=0.01):
     cell_loc = (frac / cell_size).astype(int)
     struct.properties["cell-list"] = cell_loc
     
+
+def get_sc_mult(struct, radius):
+    """
+    The multiplicity for the supercell must enclose all lattice sites that
+    are less than the given radius away
+    """
+    lv = np.vstack(struct.lattice)
+    min_norm = np.min(np.linalg.norm(lv, axis=-1))
+        
+    ### Just choose to be a very large value such that even for very oblique cells
+    ###   it will be robust
+    max_range = np.ceil(((radius / min_norm)+1)*3).astype(int)
+    lv_range = np.hstack([np.arange(0,max_range+1), np.arange(-max_range,0)])
+
+    ### Get fractional points
+    a_grid,b_grid,c_grid = np.meshgrid(lv_range, lv_range, lv_range, 
+                                        indexing="ij")
+    frac_grid = np.c_[a_grid.ravel(), 
+                        b_grid.ravel(), 
+                        c_grid.ravel()]
+
+    ### Get cartesian translations
+    cart_grid = np.dot(frac_grid, lv)
+
+    ### Cartesian distances must be greater than radius away from any lattice site
+    ### of the original unit cell 
+    keep_mask = np.zeros(len(cart_grid,))
+    vert = np.array([[0,0,0],[1,0,0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[1,1,1]])
+    vert_cart = np.dot(vert,lv)
+    ### Divide by 2 is correct, but I'll use divide by 3 for extra buffer 
+    ###  against bad behavior at small inefficiency expense
+    dist = np.linalg.norm(cart_grid - vert_cart[:,None], axis=-1)/3
+    keep_mask = np.max(dist < (radius+0.1), axis=0)
+
+    keep_frac = frac_grid[keep_mask]
+
+    max_frac = np.max(keep_frac,axis=0)
+    min_frac = np.min(keep_frac,axis=0)
+    final_range = max_frac - min_frac
+    
+    return final_range+1
+    
     
 def supercell_cell_list(struct, cell_size=0.01, radius=4):
     """
@@ -48,12 +92,7 @@ def supercell_cell_list(struct, cell_size=0.01, radius=4):
     API easier for the implementation of finding fully periodic neighborlists 
     
     """
-    lv_norm = np.linalg.norm(np.vstack(struct.lattice), axis=-1)
-    
-    ### The length of the lattice of the supercell must satisfy that from the
-    ### center to any edge is greater than the radius to completely satisfy 
-    ### the correct conditions for the CenteredSupercell construction 
-    supercell_mult = np.ceil(radius / (lv_norm/2) + 1).astype(int)
+    supercell_mult = get_sc_mult(struct, radius)
     
     ### NEED TO USE A CENTERED SUPERCELL FOR THIS TO WORK
     supercell_driver = CenteredSupercell(
@@ -65,10 +104,8 @@ def supercell_cell_list(struct, cell_size=0.01, radius=4):
     supercell = supercell_driver.calc_struct(struct)
     
     ### Now, only need to keep atoms in the unit cell that are within the radius
-    ### of the centered supercell
-    supercell = supercell_driver.remove_radius(supercell, radius)
-    
-    cell_list(supercell)
+    ### of the centered supercell. Cell-list computed at this step. 
+    supercell = supercell_driver.remove_radius(supercell, radius, cell_size)
     
     return supercell
     
@@ -83,7 +120,7 @@ def get_cell_neigh(struct, atom_idx=[], cell_size=0.01, radius=4):
         num_atom = len(struct.geometry)
         atom_idx = np.arange(0,num_atom)
         
-    cell_radius = get_cell_radius(struct, cell_size=0.01, radius=4)
+    cell_radius = get_cell_radius(struct, cell_size=cell_size, radius=radius)
     atom_cell_idx = []
     for temp_atom_idx in atom_idx:
         atom_cell_idx.append(_get_cell_neigh(struct, cell_radius, temp_atom_idx))
@@ -94,12 +131,24 @@ def get_cell_neigh(struct, atom_idx=[], cell_size=0.01, radius=4):
 def get_cell_radius(struct, cell_size=0.01, radius=4):
     """
     Converts the given radius, in angstrom, to the integer size of the fractional
-    cells
+    cells given the cell size. Returned is the number of cells in each direction
+    representing a rectangular volume in fractional coordinates that fully 
+    encompasses a sphere of the given cartesian radius.  
         
     """
-    lv_norm = np.linalg.norm(np.vstack(struct.lattice), axis=-1)
-    cell_radius = np.ceil((radius / (lv_norm/2)) / cell_size).astype(int)
-    return cell_radius
+    lv = np.vstack(struct.lattice)
+    lv_inv = np.linalg.inv(struct.lattice.T)
+    ### Get spherical coordinates
+    coords = lebedev_64
+    ### Scale by radius
+    coords = coords*radius
+    ### Compute positions in fractional space
+    frac_coords = np.dot(lv_inv, coords.T).T
+    ### Get rectangular volume in fractional space
+    rect = np.max(frac_coords, axis=0)
+    ### Calculate cells in each direction for this rectangular volume
+    cell_radius = np.ceil(rect / cell_size).astype(int)
+    return cell_radius+1
     
     
 def _get_cell_neigh(struct, 
@@ -360,9 +409,14 @@ class CenteredSupercell(Supercell):
         
         supercell_id = "{}_CenteredSupercell_{}_{}_{}".format(
             struct.struct_id, self.mult[0], self.mult[1], self.mult[2])
-        supercell = Structure.from_geo(keep_geo, keep_ele, 
-                                       lat=desired_lv,
-                                       struct_id=supercell_id)
+        supercell = Structure(struct_id=supercell_id,
+                              geometry=keep_geo, 
+                              elements=[], 
+                              lattice=desired_lv,
+                              bonds=[[]],
+                              trusted=True)
+        ### This is much faster 
+        supercell.elements = keep_ele
         
         supercell.properties["original_idx"] = keep_original_idx
         supercell.properties["original_supercell_trans"] = final_trans
@@ -428,36 +482,51 @@ class CenteredSupercell(Supercell):
         return supercell
     
     
-    def remove_radius(self, supercell, radius, tol=0.1):
+    def remove_radius(self, supercell, radius, cell_size=0.01, tol=0.1):
         """
         Removes all atoms that are outside the given radius from the original 
-        centered unit cell
+        centered unit cell. This is an approximate operation. If the method 
+        was exact, then no time could be saved anyways. 
         
         For 49,024 atoms in the supercell this takes ~15 ms
         For 2,584 atoms in the supercell this takes 1 ms
         
         """
-        geo = supercell.geometry.copy()
-        original_lv = supercell.properties["original_lv"]
-        original_lv_norm = np.linalg.norm(original_lv, axis=-1)
-        original_lv_inv = supercell.properties["original_lv_inv"]
-        original_origin = supercell.properties["original_origin"]
-        geo -= original_origin
-        original_frac = np.dot(original_lv_inv, geo.T).T
-        original_frac_radius = radius / original_lv_norm
-        frac_tol = tol / original_lv_norm
+        natoms = len(self.struct)
+        cell_list(supercell, cell_size)
+        cell_radius = get_cell_radius(supercell, cell_size, radius)
         
-        min_frac = 0-original_frac_radius-frac_tol
-        max_frac = 1+original_frac_radius+frac_tol
+        ### Perform approximate removal based on the cell_radius 
+        init_cell_list = supercell.properties["cell-list"][0:natoms]
+        max_cell = np.max(init_cell_list, axis=0)+cell_radius+1
+        min_cell = np.min(init_cell_list, axis=0)-cell_radius-1
         
+        ### Find all atoms within this rectangular volume from fraction space
+        cl = supercell.properties["cell-list"]
         keep_idx = np.where(
-            np.logical_and(original_frac[:,0] >= min_frac[0],
-            np.logical_and(original_frac[:,1] >= min_frac[1],
-            np.logical_and(original_frac[:,2] >= min_frac[2],
-            np.logical_and(original_frac[:,0] <= max_frac[0],
-            np.logical_and(original_frac[:,1] <= max_frac[1],
-                           original_frac[:,2] <= max_frac[2]))))))[0]
+                np.logical_and(cl[:,0] >= min_cell[0],
+                np.logical_and(cl[:,1] >= min_cell[1],
+                np.logical_and(cl[:,2] >= min_cell[2],
+                np.logical_and(cl[:,0] <= max_cell[0],
+                np.logical_and(cl[:,1] <= max_cell[1],
+                               cl[:,2] <= max_cell[2]))))))[0]
+
+        # geo = supercell.geometry.copy()
+        # original_lv = supercell.properties["original_lv"]
+        # original_lv_norm = np.linalg.norm(original_lv, axis=-1)
+        # original_lv_inv = supercell.properties["original_lv_inv"]
+        # original_origin = supercell.properties["original_origin"]
+        # geo -= original_origin
+        # original_frac = np.dot(original_lv_inv, geo.T).T
+        # original_frac_radius = radius / original_lv_norm
+        # frac_tol = tol / original_lv_norm
         
+        # min_frac = 0-original_frac_radius-frac_tol
+        # max_frac = 1+original_frac_radius+frac_tol
+        
+        # dist = np.linalg.norm(geo-geo[0:len(self.struct)][:,None], axis=-1)
+        # keep_mask = np.max(dist < (radius+1), axis=0)
+        # keep_idx = np.where(keep_mask == True)[0]
         
         # self.original_frac = original_frac
         # self.original_frac_radius = original_frac_radius
