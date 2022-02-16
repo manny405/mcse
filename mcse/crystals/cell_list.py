@@ -8,8 +8,9 @@ from scipy.spatial.distance import cdist
 from mcse.core import Structure
 from mcse.core.driver import BaseDriver_
 from mcse.crystals.supercell import Supercell
-from mcse.crystals.lebedev import lebedev_64
+from mcse.crystals.lebedev import lebedev_5,lebedev_64
 lebedev_64 = np.array(lebedev_64["coords"])
+lebedev_5 = np.array(lebedev_5["coords"])
 
 
 def cell_list(struct, cell_size=0.01):
@@ -50,40 +51,61 @@ def get_sc_mult(struct, radius):
     are less than the given radius away
     """
     lv = np.vstack(struct.lattice)
+    lv_inv = np.linalg.inv(lv.T)
     min_norm = np.min(np.linalg.norm(lv, axis=-1))
-        
-    ### Just choose to be a very large value such that even for very oblique cells
-    ###   it will be robust
-    max_range = np.ceil(((radius / min_norm)+1)*3).astype(int)
-    lv_range = np.hstack([np.arange(0,max_range+1), np.arange(-max_range,0)])
-
-    ### Get fractional points
-    a_grid,b_grid,c_grid = np.meshgrid(lv_range, lv_range, lv_range, 
-                                        indexing="ij")
-    frac_grid = np.c_[a_grid.ravel(), 
-                        b_grid.ravel(), 
-                        c_grid.ravel()]
-
-    ### Get cartesian translations
-    cart_grid = np.dot(frac_grid, lv)
-
-    ### Cartesian distances must be greater than radius away from any lattice site
-    ### of the original unit cell 
-    keep_mask = np.zeros(len(cart_grid,))
+    
+    ### Calculate fractional coordinates of sphere of given radius at each 
+    ###   lattice cite of the original unit cell. 
     vert = np.array([[0,0,0],[1,0,0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[1,1,1]])
     vert_cart = np.dot(vert,lv)
-    ### Divide by 2 is correct, but I'll use divide by 3 for extra buffer 
-    ###  against bad behavior at small inefficiency expense
-    dist = np.linalg.norm(cart_grid - vert_cart[:,None], axis=-1)/3
-    keep_mask = np.max(dist < (radius+0.1), axis=0)
-
-    keep_frac = frac_grid[keep_mask]
-
-    max_frac = np.max(keep_frac,axis=0)
-    min_frac = np.min(keep_frac,axis=0)
+    frac_list = []
+    for temp_pos in vert_cart:
+        ### Make sure to operate on copy of coords
+        coords = lebedev_5.copy()
+        coords = coords + temp_pos
+        coords *= radius
+        frac = np.dot(lv_inv, coords.T).T
+        frac_list.append(frac)
+    ### Get max and min and round appropriately
+    frac = np.vstack(frac_list)
+    max_frac = np.ceil(np.max(frac, axis=0))
+    min_frac = np.floor(np.min(frac, axis=0))
     final_range = max_frac - min_frac
+    return final_range
+        
+      
+    # ### Just choose to be a very large value such that even for very oblique cells
+    # ###   it will be robust
+    # max_range = np.ceil(((radius / min_norm)+1)*3).astype(int)
+    # lv_range = np.hstack([np.arange(0,max_range+1), np.arange(-max_range,0)])
+
+    # ### Get fractional points
+    # a_grid,b_grid,c_grid = np.meshgrid(lv_range, lv_range, lv_range, 
+    #                                     indexing="ij")
+    # frac_grid = np.c_[a_grid.ravel(), 
+    #                     b_grid.ravel(), 
+    #                     c_grid.ravel()]
+
+    # ### Get cartesian translations
+    # cart_grid = np.dot(frac_grid, lv)
+
+    # ### Cartesian distances must be greater than radius away from any lattice site
+    # ### of the original unit cell 
+    # keep_mask = np.zeros(len(cart_grid,))
+    # vert = np.array([[0,0,0],[1,0,0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[1,1,1]])
+    # vert_cart = np.dot(vert,lv)
+    # ### Divide by 2 is correct, but I'll use divide by 3 for extra buffer 
+    # ###  against bad behavior at small inefficiency expense
+    # dist = np.linalg.norm(cart_grid - vert_cart[:,None], axis=-1)/3
+    # keep_mask = np.max(dist < (radius+0.1), axis=0)
+
+    # keep_frac = frac_grid[keep_mask]
+
+    # max_frac = np.max(keep_frac,axis=0)
+    # min_frac = np.min(keep_frac,axis=0)
+    # final_range = max_frac - min_frac
     
-    return final_range+1
+    # return final_range+1
     
     
 def supercell_cell_list(struct, cell_size=0.01, radius=4):
