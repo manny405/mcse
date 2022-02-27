@@ -244,9 +244,11 @@ class Structure(object):
         mol_idx = self.get_molecule_idx(**self.bonds_kw)
         self._molecules = {}
         for idx,temp_idx in enumerate(mol_idx):
-            temp_mol = self.get_sub(temp_idx, lattice=False)
-            temp_mol.struct_id = "{}_Molecule_{}".format(self.struct_id,
-                                                         idx)
+            temp_id = "{}_Molecule_{}".format(self.struct_id,idx)
+            temp_mol = self.get_sub(temp_idx, 
+                                    lattice=False, 
+                                    struct_id=temp_id,
+                                    bonds=True)
             self._molecules[temp_mol.struct_id] = temp_mol
         
         return self._molecules
@@ -421,7 +423,7 @@ class Structure(object):
         return struct
     
     
-    def get_sub(self, idx, lattice=True, struct_id=""):
+    def get_sub(self, idx, lattice=True, struct_id="", bonds=True):
         """
         Returns the sub-structure with respect to provided indices. 
         
@@ -433,14 +435,34 @@ class Structure(object):
             If True, will include the original lattice vectors
         """
         geo = self.get_geo_array()
-        sub = Structure.from_geo(geo[idx], 
-                                 self.elements[idx], 
-                                 struct_id=struct_id)
+        if bonds:
+            ### Pre-fetch bonds for mol_idx such that they don't need to be 
+            ###   re-computed upon instantiation of structure class
+            self.get_bonds(**self.bonds_kw)
+            full_sub_bonds = [self.bonds[x] for x in idx]
+            new_sub_bonds = []
+            lookup = {}
+            for iter_idx,atom_idx in enumerate(idx):
+                lookup[atom_idx] = iter_idx
+            for temp_bonds in full_sub_bonds:
+                temp_keep = []
+                for temp_atom_idx in temp_bonds:
+                    if temp_atom_idx in lookup:
+                        temp_keep.append(lookup[temp_atom_idx])
+                new_sub_bonds.append(temp_keep)
+        else:
+            new_sub_bonds = []
+            
+        sub = Structure(struct_id=struct_id,
+                        geometry=geo[idx], 
+                        elements=self.elements[idx], 
+                        bonds=new_sub_bonds)
+                     
         sub.properties["Parent_ID"] = self.struct_id
         if lattice:
             if len(self.lattice) > 0:
                 sub.lattice = self.lattice
-        sub.get_struct_id()
+                
         return sub
         
     

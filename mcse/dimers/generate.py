@@ -8,15 +8,22 @@ from mcse.molecules.align import get_principal_axes,fast_align
 from mcse.dimers.check import check_dimer
 
 
-def params(struct, identical=True, ret_mol=False):
+def params(struct, identical=True, ret_mol=False, trusted=False):
     """
     Returns a set of parameteters generate the given dimer, which are the 
     relative orientations and the COM vector separating them. If the molecules  
     in the dimer are not identical, then the orientations of each individual 
     molecular component are returned. 
     
+    Arguments
+    ---------
+    trusted: bool
+        This is only if you know that what is being input is a trusted dimer. 
+        This saves 30% of compute time if the input is known to be valid. 
+    
     """
-    check_dimer(struct)
+    if not trusted:
+        check_dimer(struct)
     
     mols = struct.molecules
     mol_ids = list(mols.keys())
@@ -91,20 +98,20 @@ def generate(rot1,rot2,trans,mol1,mol2,check_orientations=True):
     
     ### Copy molecules so as to not make any changes to the inputs, 
     ###   particularly if mol1 and mol2 are actually the same object
-    m1 = mol1.copy()
-    m2 = mol2.copy()
+    m1 = mol1.geometry
+    m2 = mol2.geometry
     ### Rotate and translate
-    m1.rotate(rot1)
-    m2.rotate(rot2)
-    m2.translate(trans)
+    m1 = np.dot(rot1, m1.T).T
+    m2 = np.dot(rot2, m2.T).T
+    m2 += trans
     ### Combine 
-    final_geo = np.vstack([m1.geometry, m2.geometry])
-    final_ele = np.hstack([m1.elements, m2.elements])
+    final_geo = np.vstack([m1, m2])
+    final_ele = np.hstack([mol1.elements, mol2.elements])
     mol_idx = [np.arange(0,len(m1)).tolist()]
     mol_idx += [np.arange(len(m1),len(m1)+len(m2)).tolist()]
-    bonds = m1.get_bonds()
+    bonds = mol1.get_bonds().copy()
     offset = len(bonds)
-    for bond_list in m2.get_bonds():
+    for bond_list in mol2.get_bonds():
         temp_add_bonds = []
         for temp_atom_idx in bond_list:
             temp_atom_idx = temp_atom_idx+offset
