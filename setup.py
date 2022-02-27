@@ -15,6 +15,7 @@ setup(
                 'mcse/libmpi',
                 'mcse/workflow',
                 'mcse/dimers',
+                'mcse/md',
                 ],
       install_requires=[
         'scipy>=1.5.0',

@@ -638,7 +638,17 @@ class Structure(object):
     
         self.properties["density"] = (mass / volume)*factor
         return self.properties["density"]
-
+    
+    
+    @property
+    def com(self):
+        mass = np.array([atomic_masses_iupac2016[atomic_numbers[x]] 
+                         for x in self.elements]).reshape(-1)
+        total = np.sum(mass)
+        com = np.sum(self.geometry*mass[:,None], axis=0)
+        com = com / total
+        return com
+    
     
     @property
     def spg(self):

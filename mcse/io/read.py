@@ -368,7 +368,7 @@ def import_ase(file_path, file_format=""):
     struct = Structure.from_ase(atoms)
     file_name = os.path.basename(file_path)
     # Struct ID is filename before decimal 
-    struct.struct_id = file_name.split('.')[0]
+    struct.struct_id = os.path.splitext(file_name)[0]
     return struct
 
 
