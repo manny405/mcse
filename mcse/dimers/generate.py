@@ -5,7 +5,7 @@ from mcse.core import Structure
 from mcse.molecules import rot_mol 
 from mcse.molecules.compare import compare_rmsd_pa
 from mcse.molecules.align import get_principal_axes,fast_align
-from mcse.dimers.check import check_dimer
+from mcse.dimers.check import check_dimer,check_identical
 
 
 def params(struct, identical=True, ret_mol=False, trusted=False):
@@ -44,6 +44,7 @@ def params(struct, identical=True, ret_mol=False, trusted=False):
             fast_align(mol1)
             fast_align(mol2)
             ret += [mol1, mol2]
+        raise Exception("Not tested yet")
         return tuple(ret)
     
     ### Compute exact relative rot
@@ -96,6 +97,10 @@ def generate(rot1,rot2,trans,mol1,mol2,check_orientations=True):
                     "with the origin. To correct this use "+
                     "mcse.molecules.align.fast_align ")
     
+    rot1 = np.array(rot1)
+    rot2 = np.array(rot2)
+    trans = np.array(trans)
+    
     ### Copy molecules so as to not make any changes to the inputs, 
     ###   particularly if mol1 and mol2 are actually the same object
     m1 = mol1.geometry
@@ -139,13 +144,69 @@ def generate(rot1,rot2,trans,mol1,mol2,check_orientations=True):
                      lattice=[],
                      bonds=[],
                      properties=properties)
+
+
+def center(dimer, center_min=True):
+    """
+    Centers the system for one the molecules in the dimer such that the COM is 
+    at the origin and the axes defined by the moment of inertia tensor are  
+    oriented with the origin. This is done by translating and rotation the 
+    entire dimer system.
     
+    Arguments
+    ---------
+    struct: Structure
+        Structure to adjust
+    center_min: bool
+        If True, will center on molecule closest to the origin.
+        If False, will center on molecule furtherst from origin. 
+        
+    """
+    mols = dimer.molecules
+    mol_list = list(mols.values())
+    com_list = np.vstack([x.com for x in mols.values()])
+    dist = np.linalg.norm(com_list, axis=-1)
     
+    if center_min:
+        idx = np.argmin(dist)
+    else:
+        idx = np.argmax(dist)
+    
+    trans = com_list[idx]
+    rot = get_principal_axes(mol_list[idx])
+    dimer.translate(-trans)
+    dimer.rotate(rot)
+    
+    return dimer
+
+
+def set_params(dimer, check_identical_fn=check_identical, trusted=False):
+    """
+    Set the dimer parameters of the given Structure in Structure.properties
+    
+    Arguments
+    ---------
+    check_identical_fn: callable
+        Callable to check if the input dimer is made up of identical molecules.
+        Default function is a general approach based on geometry. If it's known
+        that the dimer is made up of identical molecules a definition such using
+        lambda will be the best possible performance. For example, 
+        check_identical_fn=lambda x: True
+    """
+    if not trusted:
+        check_dimer(dimer)
+    identical = check_identical_fn(dimer)
+    dparams = params(dimer, identical, trusted=True)
+    dimer.properties["dimer_params"] = (dparams[0].tolist(),
+                                        dparams[1].tolist(),
+                                        dparams[2].tolist())
+    dimer.properties["dimer_identical"] = identical
+    dimer.properties["dimer_trusted"] = True
+    return dimer
+
 
 def hash_params(rot1,rot2,trans):
-    r1b = rot1.tobytes()
-    r2b = rot2.tobytes()
-    trans = trans.tobytes()
+    r1b = np.array(rot1).tobytes()
+    r2b = np.array(rot2).tobytes()
+    trans = np.array(trans).tobytes()
     return hash(r1b+r2b+trans)
-    
-    

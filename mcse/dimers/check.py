@@ -4,6 +4,7 @@ from scipy.spatial.distance import cdist
 
 from ase.data import chemical_symbols,vdw_radii,atomic_numbers,covalent_radii
 
+from mcse.molecules.compare import compare_graph,compare_rmsd_pa
 from mcse.dimers.cutoffs import get_cutoff_matrix
 
 
@@ -117,4 +118,34 @@ def check_dist(dimer,
                 return False
         
         ### If haven't returned yet, must be True
+        return True
+    
+    
+def check_identical(dimer, 
+                    rmsd_tol=0.15, 
+                    bonds_kw={}, 
+                    chiral=False, 
+                    trusted=False):
+    """
+    Check if the input dimer is made up of identical molecules. This function
+    will be relatively slow in order to achieve good accuracy for comparing
+    the molecules in the dimer, and there's not much way around this. 
+
+    """
+    
+    if not trusted:
+        check_dimer(dimer)
+        
+    mols = dimer.molecules
+    mol_ids = list(mols.keys())
+    mol1 = mols[mol_ids[0]]
+    mol2 = mols[mol_ids[1]]
+    
+    if not compare_graph(mol1,mol2,bonds_kw):
+        return False
+
+    results = compare_rmsd_pa(mol1,mol2,rmsd_tol,bonds_kw,chiral)
+    if not results[0]:
+        return False
+    else:
         return True
