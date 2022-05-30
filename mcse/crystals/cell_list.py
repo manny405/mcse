@@ -556,7 +556,7 @@ class CenteredSupercell(Supercell):
         
         ### Need to update the properties
         new_id = "{}_Radius_Removed".format(supercell.struct_id)
-        radius_removed = supercell.get_sub(keep_idx, struct_id=new_id)
+        radius_removed = supercell.get_sub(keep_idx, struct_id=new_id, bonds=False)
         radius_removed.properties["original_idx"] = \
                     supercell.properties["original_idx"][keep_idx]
         radius_removed.properties["original_supercell_trans"] = \

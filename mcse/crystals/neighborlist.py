@@ -808,7 +808,7 @@ def get_inter(struct, vdw=[], max_sr=1.30, bonds_kw={}, standardize=True,
     ###   reference to the non-periodic geometry given that the non-periodic 
     ###   geometry contains valid molecules as in the case of genarris/GAtor
     ###   or any construction of a unit cell from simple molecules. 
-    sc_ele = nl.sc.geometry["element"]
+    sc_ele = nl.sc.elements
     sc_geo = nl.sc.get_geo_array()
 
     ### Datatypes to make fast lookups to what molecule each atom belongs to
